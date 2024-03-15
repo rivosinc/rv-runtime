@@ -20,9 +20,10 @@ SECTIONS {
         _srodata = .;
         *(.rodata .rodata.*)
         *(.srodata .srodata.*)
-        . = ALIGN(131072);
+        . = ALIGN(4096);
         _erodata = .;
     } >region_1
+    . = ALIGN(131072);
     .data : ALIGN(4096) {
         _sdata = .;
         _global_pointer = . + 0x800;
