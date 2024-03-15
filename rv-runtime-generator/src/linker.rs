@@ -424,6 +424,9 @@ pub struct Section {
     ty: SectionType,
     start_alignment_in_bytes: usize,
     end_alignment_in_bytes: usize,
+    // Set to some value if there are any requirements to align current location counter
+    // after end of section. e.g. for NAPOT regions to align end of the region.
+    post_section_alignment_in_bytes: Option<usize>,
     target_memory: String,
     subsections: Vec<SubSection>,
     load_address: Option<String>, // Symbol indicating load address
@@ -437,6 +440,8 @@ impl Section {
             // By default we assume that start and end alignments are same. Later on, we can evaluate
             // if end alignment needs to be different based on any other requirements
             end_alignment_in_bytes: alignment_in_bytes,
+            // No alignment requirements post section by default.
+            post_section_alignment_in_bytes: None,
             target_memory: target_memory.to_string(),
             subsections: Vec::new(),
             load_address: None,
@@ -547,11 +552,11 @@ impl<'a> LinkerConfig<'a> {
 
             let mut found_section = false;
 
-            // Update the end_alignment_in_bytes in the last section mapped to this region. Walk in reverse order so
+            // Update the post_section_alignment_in_bytes in the last section mapped to this region. Walk in reverse order so
             // that it is the first section that we encounter.
             for section in sections.iter_mut().rev() {
                 if section.target_memory.eq(region_name) {
-                    section.end_alignment_in_bytes = region.length;
+                    section.post_section_alignment_in_bytes = Some(region.length);
                     found_section = true;
                     break;
                 }
@@ -824,8 +829,13 @@ impl<'a> LinkerBuilder<'a> {
         ));
     }
 
-    fn output_section_end(&self, section_suffix: String) {
+    fn output_section_end(&self, section_info: &Section) {
+        let section_suffix = section_info.target_memory.to_string();
         self.add_sentence(LinkerSentence::OutputSectionEnd(section_suffix));
+        if let Some(post_section_alignment_in_bytes) = section_info.post_section_alignment_in_bytes
+        {
+            self.align(post_section_alignment_in_bytes);
+        }
     }
 
     fn set_symbol_to_current(&self, symbol: String) {
@@ -935,7 +945,7 @@ impl<'a> LinkerBuilder<'a> {
         self.set_symbol_to_current(ty.section_entry_end_symbol());
 
         // } >{MEMORY}
-        self.output_section_end(section_info.target_memory.to_string());
+        self.output_section_end(section_info);
     }
 
     fn add_rodata_section(&self, section_info: &Section) {
@@ -969,7 +979,7 @@ impl<'a> LinkerBuilder<'a> {
         self.set_symbol_to_current(ty.section_entry_end_symbol());
 
         // } >{MEMORY}
-        self.output_section_end(section_info.target_memory.to_string());
+        self.output_section_end(section_info);
     }
 
     fn add_data_section(&self, section_info: &Section) {
@@ -1006,7 +1016,7 @@ impl<'a> LinkerBuilder<'a> {
         self.set_symbol_to_current(ty.section_entry_end_symbol());
 
         // } >{MEMORY}
-        self.output_section_end(section_info.target_memory.to_string());
+        self.output_section_end(section_info);
     }
 
     fn add_stack_section_contents(&self) {
@@ -1042,7 +1052,7 @@ impl<'a> LinkerBuilder<'a> {
         self.align(section_info.end_alignment_in_bytes);
 
         // } >{MEMORY}
-        self.output_section_end(section_info.target_memory.to_string());
+        self.output_section_end(section_info);
     }
 
     fn add_bss_section(&self, section_info: &Section) {
@@ -1079,7 +1089,7 @@ impl<'a> LinkerBuilder<'a> {
         self.set_symbol_to_current(ty.section_entry_end_symbol());
 
         // } >{MEMORY}
-        self.output_section_end(section_info.target_memory.to_string());
+        self.output_section_end(section_info);
     }
 
     fn add_heap_section(&self, section_info: &Section) {
@@ -1112,7 +1122,7 @@ impl<'a> LinkerBuilder<'a> {
         self.set_symbol_to_current(ty.section_entry_end_symbol());
 
         // } >{MEMORY}
-        self.output_section_end(section_info.target_memory.to_string());
+        self.output_section_end(section_info);
     }
 
     fn add_custom_section(&self, section_info: &Section, size: usize) {
@@ -1151,7 +1161,7 @@ impl<'a> LinkerBuilder<'a> {
         self.set_symbol_to_current(ty.section_entry_end_symbol());
 
         // } >{MEMORY}
-        self.output_section_end(section_info.target_memory.to_string());
+        self.output_section_end(section_info);
     }
 
     fn add_discard_section(&self) {
