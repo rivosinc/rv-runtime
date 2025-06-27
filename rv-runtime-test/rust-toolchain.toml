@@ -1,0 +1,4 @@
+[toolchain]
+channel = "1.88.0"
+targets = ["riscv64gc-unknown-none-elf"]
+components = [ "rustfmt", "clippy" ]
