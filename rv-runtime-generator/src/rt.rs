@@ -2332,62 +2332,6 @@ fn create_trap_frame(asm: &AsmBuilder) {
 
     // All general-purpose registers (except sp, tp) are stashed. So, initialize free reg pool
     asm.init_default_free_reg_pool();
-
-    // Save floating point registers if required
-    if asm.rt_config.floating_point_support {
-        asm.comment("Check if FS is dirty and if so, stash the floating-point registers");
-        let fs_clean = asm.next_label();
-
-        let status_reg = asm.get_free_reg();
-        let temp_reg = asm.get_free_reg();
-        let mask_reg = asm.get_free_reg();
-
-        // Check for FS != Dirty
-        asm.csrr(status_reg, Csr::Status);
-        asm.li_unconstrained(mask_reg, STATUS_FS_MASK_DIRTY);
-        asm.and(temp_reg, status_reg, mask_reg);
-        asm.bne(temp_reg, mask_reg, &forward_label(&fs_clean));
-
-        // It is dirty, so stash the FP registers
-        let fr_start_idx = asm.rt_config.trap_frame.fr_start_idx();
-        for (idx, fr) in asm
-            .rt_config
-            .trap_frame
-            .floating_point_registers
-            .iter()
-            .enumerate()
-        {
-            asm.fstore(*fr, sp, (idx as isize + fr_start_idx) * reg_size);
-        }
-
-        // Set FS state to Clean
-        asm.comment("Now that the FP registers are stashed, set the FS state to Clean");
-        // Invert the mask
-        asm.xori(mask_reg, mask_reg, -1);
-        // Clear the FS bits
-        asm.and(temp_reg, mask_reg, status_reg);
-        // Write Clean state into FS
-        asm.li_unconstrained(mask_reg, STATUS_FS_CLEAN);
-        asm.or(status_reg, temp_reg, mask_reg);
-        asm.csrw(Csr::Status, status_reg);
-        asm.release_reg(status_reg);
-
-        // Indicate that the floating point state needs to be restored as well
-        asm.comment("Record the fact that the FP registers will need to be restored in RT flags");
-        asm.read_rt_flags_from_tpblock(temp_reg);
-        asm.li_unconstrained(
-            mask_reg,
-            RtFlagBit::FsStateWasDirty.as_mask().try_into().unwrap(),
-        );
-        asm.or(temp_reg, temp_reg, mask_reg);
-        asm.write_rt_flags_to_tpblock(temp_reg);
-
-        asm.release_reg(mask_reg);
-        asm.release_reg(temp_reg);
-
-        asm.label(&fs_clean, None, None, None);
-    }
-
     let temp_reg = asm.get_free_reg();
 
     // Stash SP from thread pointer block
@@ -2415,6 +2359,61 @@ fn create_trap_frame(asm: &AsmBuilder) {
     for (idx, csr) in asm.rt_config.trap_frame.csrs.iter().enumerate() {
         asm.csrr(temp_reg, *csr);
         asm.store(temp_reg, sp, (idx as isize + csr_start_idx) * reg_size);
+    }
+
+    // Save floating point registers if required
+    if asm.rt_config.floating_point_support {
+        asm.comment("Check if FS is dirty and if so, stash the floating-point registers");
+        let fs_clean = asm.next_label();
+
+        let status_reg = asm.get_free_reg();
+        let temp_reg = asm.get_free_reg();
+        let mask_reg = asm.get_free_reg();
+
+        // Check for FS != Dirty
+        asm.load(status_reg, sp, asm.rt_config.status_reg_offset());
+        asm.li_unconstrained(mask_reg, STATUS_FS_MASK_DIRTY);
+        asm.and(temp_reg, status_reg, mask_reg);
+        asm.bne(temp_reg, mask_reg, &forward_label(&fs_clean));
+
+        // It is dirty, so stash the FP registers
+        let fr_start_idx = asm.rt_config.trap_frame.fr_start_idx();
+        for (idx, fr) in asm
+            .rt_config
+            .trap_frame
+            .floating_point_registers
+            .iter()
+            .enumerate()
+        {
+            asm.fstore(*fr, sp, (idx as isize + fr_start_idx) * reg_size);
+        }
+
+        // Set FS state to Clean
+        asm.comment("Now that the FP registers are stashed, set the FS state to Clean");
+        // Invert the mask
+        asm.xori(mask_reg, mask_reg, -1);
+        // Clear the FS bits
+        asm.and(temp_reg, mask_reg, status_reg);
+        // Write Clean state into FS
+        asm.li_unconstrained(mask_reg, STATUS_FS_CLEAN);
+        asm.or(status_reg, temp_reg, mask_reg);
+        asm.store(status_reg, sp, asm.rt_config.status_reg_offset());
+        asm.release_reg(status_reg);
+
+        // Indicate that the floating point state needs to be restored as well
+        asm.comment("Record the fact that the FP registers will need to be restored in RT flags");
+        asm.read_rt_flags_from_tpblock(temp_reg);
+        asm.li_unconstrained(
+            mask_reg,
+            RtFlagBit::FsStateWasDirty.as_mask().try_into().unwrap(),
+        );
+        asm.or(temp_reg, temp_reg, mask_reg);
+        asm.write_rt_flags_to_tpblock(temp_reg);
+
+        asm.release_reg(mask_reg);
+        asm.release_reg(temp_reg);
+
+        asm.label(&fs_clean, None, None, None);
     }
 
     // Store rt flags from thread pointer block to trapframe and zero-out flags from thread pointer block
