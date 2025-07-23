@@ -442,11 +442,33 @@ create_trap_frame:
     sd t4, 224(sp)
     sd t5, 232(sp)
     sd t6, 240(sp)
-    // Check if FS is dirty and if so, stash the floating-point registers
+    // Stash SP in trap frame using the interrupted mode stack value in thread pointer block
+    ld t6, 8(tp)
+    sd t6, 8(sp)
+    // get ra from thread pointer block and save
+    ld t6, 56(tp)
+    sd t6, (sp)
+    // Stash TP in trap frame using the scratch register value
+    ld t6, 16(tp)
+    sd t6, 24(sp)
+    // Write 0 to scratch register so that trap entry path knows if we encounter a nested trap in current mode
+    csrw mscratch, zero
+    // Stash all the CSRs in trap frame
     csrr t6, mstatus
-    li t4, 24576
-    and t5, t6, t4
-    bne t5, t4, 11f
+    sd t6, 504(sp)
+    csrr t6, mepc
+    sd t6, 512(sp)
+    csrr t6, mtval
+    sd t6, 520(sp)
+    csrr t6, mcause
+    sd t6, 528(sp)
+    csrr t6, fcsr
+    sd t6, 536(sp)
+    // Check if FS is dirty and if so, stash the floating-point registers
+    ld t5, 504(sp)
+    li t3, 24576
+    and t4, t5, t3
+    bne t4, t3, 11f
     fsd f0, 248(sp)
     fsd f1, 256(sp)
     fsd f2, 264(sp)
@@ -480,45 +502,23 @@ create_trap_frame:
     fsd f30, 488(sp)
     fsd f31, 496(sp)
     // Now that the FP registers are stashed, set the FS state to Clean
-    xori t4, t4, -1
-    and t5, t4, t6
-    li t4, 16384
-    or t6, t5, t4
-    csrw mstatus, t6
-    // Record the fact that the FP registers will need to be restored in RT flags
-    ld t5, 64(tp)
-    li t4, 2
-    or t5, t5, t4
-    sd t5, 64(tp)
-11:
-    // Stash SP in trap frame using the interrupted mode stack value in thread pointer block
-    ld t5, 8(tp)
-    sd t5, 8(sp)
-    // get ra from thread pointer block and save
-    ld t5, 56(tp)
-    sd t5, (sp)
-    // Stash TP in trap frame using the scratch register value
-    ld t5, 16(tp)
-    sd t5, 24(sp)
-    // Write 0 to scratch register so that trap entry path knows if we encounter a nested trap in current mode
-    csrw mscratch, zero
-    // Stash all the CSRs in trap frame
-    csrr t5, mstatus
+    xori t3, t3, -1
+    and t4, t3, t5
+    li t3, 16384
+    or t5, t4, t3
     sd t5, 504(sp)
-    csrr t5, mepc
-    sd t5, 512(sp)
-    csrr t5, mtval
-    sd t5, 520(sp)
-    csrr t5, mcause
-    sd t5, 528(sp)
-    csrr t5, fcsr
-    sd t5, 536(sp)
+    // Record the fact that the FP registers will need to be restored in RT flags
+    ld t4, 64(tp)
+    li t3, 2
+    or t4, t4, t3
+    sd t4, 64(tp)
+11:
     // Read RT state (flags) from tpblock and save to trapframe
-    ld t5, 64(tp)
-    sd t5, 544(sp)
+    ld t6, 64(tp)
+    sd t6, 544(sp)
     // Clear out RT state (flags) in tpblock
     sd zero, 64(tp)
     // Stash trap ctx frame address in current trapframe
-    ld t5, 72(tp)
-    sd t5, 552(sp)
+    ld t6, 72(tp)
+    sd t6, 552(sp)
     ret
