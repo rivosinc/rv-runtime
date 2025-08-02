@@ -2,15 +2,40 @@ use rv_runtime_generator::*;
 use std::collections::HashMap;
 
 fn main() {
+    /* Assuming an alignment requirement of 4KiB for each section */
     let alignment = 4096;
     let max_hart_count = 4;
     let per_hart_stack_size = 8192;
     let heap_size = 4096;
+    /*  All harts in the target start booting at the same reset vector */
+    let all_harts_start_at_reset_vector = true;
     let target_config = TargetConfig {
-        hart_config: HartConfig::new(RvMode::MMode, RvXlen::Rv64, max_hart_count, true),
+        hart_config: HartConfig::new(
+            RvMode::MMode,
+            RvXlen::Rv64,
+            max_hart_count,
+            all_harts_start_at_reset_vector,
+        ),
         mem_config: MemConfig::new(per_hart_stack_size, heap_size),
         custom_reset_config: true,
     };
+
+    /* Do not skip BSS clearing on init */
+    let skip_bss_clearing = false;
+    /* Stack overflow detection is not enabled */
+    let stack_overflow_detection = false;
+    /* Target supports atomic extension (RISC-V A extension) */
+    let atomic_extension_supported = true;
+    /*
+     * Floating point support is required by the component.
+     * This ensures that the runtime saves/restores floating point registers as well.
+     */
+    let floating_point_support = true;
+    /*
+     * We are not messing with satp or other paging structures in this component, so we don't need
+     * a sfence to be executed on trapframe restore.
+     */
+    let sfence_on_trapframe_restore_feature = false;
 
     let runtime_config = RuntimeConfig {
         rt_dirpath_name: "src/generated/rt",
@@ -67,11 +92,11 @@ fn main() {
             TpBlock::get_default(),
             ThreadContext::get_default(),
             target_config,
-            false,
-            false,
-            true,
-            true,
-            false,
+            skip_bss_clearing,
+            stack_overflow_detection,
+            atomic_extension_supported,
+            floating_point_support,
+            sfence_on_trapframe_restore_feature,
         ),
     };
 
