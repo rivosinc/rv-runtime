@@ -69,7 +69,7 @@ SECTIONS {
     _ssubregion_2 = 0x8002e000;
     _esubregion_2 = 0x80030000;
 }
-ASSERT(_sregion_1 <= _stext, "region_1 underflow")
-ASSERT(_eregion_1 >= _erodata, "region_1 overflow")
-ASSERT(_ssubregion_1 <= _sdata, "subregion_1 underflow")
-ASSERT(_esubregion_1 >= _ecustom_section, "subregion_1 overflow")
+ASSERT(_sregion_1 <= _stext, "region_1 underflow");
+ASSERT(_eregion_1 >= _erodata, "region_1 overflow");
+ASSERT(_ssubregion_1 <= _sdata, "subregion_1 underflow");
+ASSERT(_esubregion_1 >= _ecustom_section, "subregion_1 overflow");
