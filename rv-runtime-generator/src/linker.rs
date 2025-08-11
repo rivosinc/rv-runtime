@@ -692,7 +692,7 @@ impl<'a> LinkerSentence<'a> {
             Self::AdvanceLocationCounter(size) => fw.add_line(&format!(". += {size:#x};")),
             Self::Align(alignment) => fw.add_line(&format!(". = ALIGN({alignment:#});")),
             Self::Assert(assert_cond, error_msg) => {
-                fw.add_line(&format!("ASSERT({assert_cond:#}, {error_msg:?})"))
+                fw.add_line(&format!("ASSERT({assert_cond:#}, {error_msg:?});"))
             }
             Self::DiscardSectionStart => fw.new_block("/DISCARD/ :"),
             Self::DiscardSectionEnd => fw.end_block(),
