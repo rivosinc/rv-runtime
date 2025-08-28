@@ -142,22 +142,40 @@ pub struct MemoryRegion {
 }
 
 impl MemoryRegion {
-    pub fn new(
-        name: &str,
-        base: usize,
-        length: usize,
-        napot: bool,
-        attribs: MemoryAttribs,
-        sub_regions: Vec<SubRegion>,
-    ) -> Self {
+    pub fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
-            base,
-            length,
-            napot,
-            attribs,
-            sub_regions,
+            base: 0,
+            length: 0,
+            napot: false,
+            attribs: MemoryAttribs::default(),
+            sub_regions: Vec::new(),
         }
+    }
+
+    pub fn set_base(mut self, base: usize) -> Self {
+        self.base = base;
+        self
+    }
+
+    pub fn set_length(mut self, length: usize) -> Self {
+        self.length = length;
+        self
+    }
+
+    pub fn set_napot(mut self) -> Self {
+        self.napot = true;
+        self
+    }
+
+    pub fn set_memory_attribs(mut self, attribs: MemoryAttribs) -> Self {
+        self.attribs = attribs;
+        self
+    }
+
+    pub fn set_sub_regions(mut self, sub_regions: Vec<SubRegion>) -> Self {
+        self.sub_regions = sub_regions;
+        self
     }
 
     fn end(&self) -> usize {

@@ -98,78 +98,102 @@ pub struct RtConfig {
 }
 
 impl RtConfig {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        entrypoints: HashMap<EntrypointType, String>,
-        trap_frame: TrapFrame,
-        tp_block: TpBlock,
-        thread_ctx: ThreadContext,
-        target_config: TargetConfig,
-        skip_bss_clearing: bool,
-        stack_overflow_detection: bool,
-        supports_atomic_extension: bool,
-        floating_point_support: bool,
-        sfence_on_trapframe_restore_feature: bool,
-    ) -> Self {
-        let mut s = Self {
-            entrypoints,
-            trap_frame,
-            tp_block,
-            thread_ctx,
+    pub fn new(target_config: TargetConfig) -> Self {
+        Self {
+            entrypoints: HashMap::new(),
+            trap_frame: TrapFrame::get_default(),
+            tp_block: TpBlock::get_default(),
+            thread_ctx: ThreadContext::get_default(),
             target_config,
-            skip_bss_clearing,
-            stack_overflow_detection,
-            supports_atomic_extension,
-            floating_point_support,
-            sfence_on_trapframe_restore_feature,
-        };
+            skip_bss_clearing: false,
+            stack_overflow_detection: false,
+            supports_atomic_extension: false,
+            floating_point_support: false,
+            sfence_on_trapframe_restore_feature: false,
+        }
+    }
 
-        if floating_point_support {
-            for fr in [
-                FloatingPointRegister::F0,
-                FloatingPointRegister::F1,
-                FloatingPointRegister::F2,
-                FloatingPointRegister::F3,
-                FloatingPointRegister::F4,
-                FloatingPointRegister::F5,
-                FloatingPointRegister::F6,
-                FloatingPointRegister::F7,
-                FloatingPointRegister::F8,
-                FloatingPointRegister::F9,
-                FloatingPointRegister::F10,
-                FloatingPointRegister::F11,
-                FloatingPointRegister::F12,
-                FloatingPointRegister::F13,
-                FloatingPointRegister::F14,
-                FloatingPointRegister::F15,
-                FloatingPointRegister::F16,
-                FloatingPointRegister::F17,
-                FloatingPointRegister::F18,
-                FloatingPointRegister::F19,
-                FloatingPointRegister::F20,
-                FloatingPointRegister::F21,
-                FloatingPointRegister::F22,
-                FloatingPointRegister::F23,
-                FloatingPointRegister::F24,
-                FloatingPointRegister::F25,
-                FloatingPointRegister::F26,
-                FloatingPointRegister::F27,
-                FloatingPointRegister::F28,
-                FloatingPointRegister::F29,
-                FloatingPointRegister::F30,
-                FloatingPointRegister::F31,
-            ] {
-                if !s.trap_frame.floating_point_registers.contains(&fr) {
-                    s.trap_frame.floating_point_registers.push(fr);
-                }
-            }
+    pub fn set_entrypoints(mut self, entrypoints: HashMap<EntrypointType, String>) -> Self {
+        self.entrypoints = entrypoints;
+        self
+    }
 
-            if !s.trap_frame.csrs.contains(&Csr::Fcsr) {
-                s.trap_frame.csrs.push(Csr::Fcsr);
+    pub fn set_trap_frame(mut self, trap_frame: TrapFrame) -> Self {
+        self.trap_frame = trap_frame;
+        self
+    }
+
+    pub fn set_tp_block(mut self, tp_block: TpBlock) -> Self {
+        self.tp_block = tp_block;
+        self
+    }
+
+    pub fn set_skip_bss_clearing(mut self) -> Self {
+        self.skip_bss_clearing = true;
+        self
+    }
+
+    pub fn set_stack_overflow_detection(mut self) -> Self {
+        self.stack_overflow_detection = true;
+        self
+    }
+
+    pub fn set_supports_atomic_extension(mut self) -> Self {
+        self.supports_atomic_extension = true;
+        self
+    }
+
+    pub fn set_floating_point_support(mut self) -> Self {
+        self.floating_point_support = true;
+        for fr in [
+            FloatingPointRegister::F0,
+            FloatingPointRegister::F1,
+            FloatingPointRegister::F2,
+            FloatingPointRegister::F3,
+            FloatingPointRegister::F4,
+            FloatingPointRegister::F5,
+            FloatingPointRegister::F6,
+            FloatingPointRegister::F7,
+            FloatingPointRegister::F8,
+            FloatingPointRegister::F9,
+            FloatingPointRegister::F10,
+            FloatingPointRegister::F11,
+            FloatingPointRegister::F12,
+            FloatingPointRegister::F13,
+            FloatingPointRegister::F14,
+            FloatingPointRegister::F15,
+            FloatingPointRegister::F16,
+            FloatingPointRegister::F17,
+            FloatingPointRegister::F18,
+            FloatingPointRegister::F19,
+            FloatingPointRegister::F20,
+            FloatingPointRegister::F21,
+            FloatingPointRegister::F22,
+            FloatingPointRegister::F23,
+            FloatingPointRegister::F24,
+            FloatingPointRegister::F25,
+            FloatingPointRegister::F26,
+            FloatingPointRegister::F27,
+            FloatingPointRegister::F28,
+            FloatingPointRegister::F29,
+            FloatingPointRegister::F30,
+            FloatingPointRegister::F31,
+        ] {
+            if !self.trap_frame.floating_point_registers.contains(&fr) {
+                self.trap_frame.floating_point_registers.push(fr);
             }
         }
 
-        s
+        if !self.trap_frame.csrs.contains(&Csr::Fcsr) {
+            self.trap_frame.csrs.push(Csr::Fcsr);
+        }
+
+        self
+    }
+
+    pub fn set_sfence_on_trapframe_restore_feature(mut self) -> Self {
+        self.sfence_on_trapframe_restore_feature = true;
+        self
     }
 
     fn trap_frame_size(&self) -> isize {

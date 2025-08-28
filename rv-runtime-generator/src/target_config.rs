@@ -65,18 +65,23 @@ pub struct HartConfig {
 }
 
 impl HartConfig {
-    pub fn new(
-        rv_mode: RvMode,
-        rv_xlen: RvXlen,
-        max_hart_count: usize,
-        all_harts_start_at_reset_vector: bool,
-    ) -> Self {
+    pub fn new(rv_mode: RvMode, rv_xlen: RvXlen) -> Self {
         Self {
             rv_mode,
             rv_xlen,
-            max_hart_count,
-            all_harts_start_at_reset_vector,
+            max_hart_count: 0,
+            all_harts_start_at_reset_vector: false,
         }
+    }
+
+    pub fn set_max_hart_count(mut self, max_hart_count: usize) -> Self {
+        self.max_hart_count = max_hart_count;
+        self
+    }
+
+    pub fn set_all_harts_start_at_reset_vector(mut self) -> Self {
+        self.all_harts_start_at_reset_vector = true;
+        self
     }
 
     pub fn multihart_reset_handling_required(&self) -> bool {
@@ -84,18 +89,25 @@ impl HartConfig {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct MemConfig {
     pub per_hart_stack_size: usize,
     pub heap_size: usize,
 }
 
 impl MemConfig {
-    pub fn new(per_hart_stack_size: usize, heap_size: usize) -> Self {
-        Self {
-            per_hart_stack_size,
-            heap_size,
-        }
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn set_per_hart_stack_size(mut self, per_hart_stack_size: usize) -> Self {
+        self.per_hart_stack_size = per_hart_stack_size;
+        self
+    }
+
+    pub fn set_heap_size(mut self, heap_size: usize) -> Self {
+        self.heap_size = heap_size;
+        self
     }
 }
 
@@ -107,6 +119,19 @@ pub struct TargetConfig {
 }
 
 impl TargetConfig {
+    pub fn new(hart_config: HartConfig, mem_config: MemConfig) -> Self {
+        Self {
+            mem_config,
+            hart_config,
+            custom_reset_config: false,
+        }
+    }
+
+    pub fn set_custom_reset_config(mut self) -> Self {
+        self.custom_reset_config = true;
+        self
+    }
+
     pub fn max_hart_count(&self) -> usize {
         self.hart_config.max_hart_count
     }
