@@ -4,100 +4,71 @@ use std::collections::HashMap;
 fn main() {
     /* Assuming an alignment requirement of 4KiB for each section */
     let alignment = 4096;
-    let max_hart_count = 4;
-    let per_hart_stack_size = 8192;
-    let heap_size = 4096;
-    /*  All harts in the target start booting at the same reset vector */
-    let all_harts_start_at_reset_vector = true;
-    let target_config = TargetConfig {
-        hart_config: HartConfig::new(
-            RvMode::MMode,
-            RvXlen::Rv64,
-            max_hart_count,
-            all_harts_start_at_reset_vector,
+    let hart_config = HartConfig::new(RvMode::MMode, RvXlen::Rv64)
+        .set_max_hart_count(4)
+        /*  All harts in the target start booting at the same reset vector */
+        .set_all_harts_start_at_reset_vector();
+    let mem_config = MemConfig::new()
+        .set_per_hart_stack_size(8192)
+        .set_heap_size(4096);
+    let target_config = TargetConfig::new(hart_config, mem_config).set_custom_reset_config();
+
+    let memory_regions = vec![
+        MemoryRegion::new("region_1")
+            .set_base(0x8000_0000)
+            .set_length(128 * KiB)
+            .set_napot()
+            .set_memory_attribs(MemoryAttribs::rx()),
+        MemoryRegion::new("region_2")
+            .set_base(0x8002_0000)
+            .set_length(64 * KiB)
+            .set_napot()
+            .set_memory_attribs(MemoryAttribs::rw())
+            .set_sub_regions(vec![
+                SubRegion::new("subregion_1", 56 * KiB, false),
+                SubRegion::new("subregion_2", 8 * KiB, true),
+            ]),
+    ];
+
+    let sections = vec![
+        Section::new(SectionType::Text, alignment, "region_1"),
+        Section::new(SectionType::Rodata, alignment, "region_1"),
+        Section::new(SectionType::Data, alignment, "subregion_1"),
+        Section::new(SectionType::Bss, alignment, "subregion_1"),
+        Section::new(SectionType::Heap, alignment, "subregion_1"),
+        Section::new(
+            SectionType::Custom("custom_section".to_string(), 4096),
+            alignment,
+            "subregion_1",
         ),
-        mem_config: MemConfig::new(per_hart_stack_size, heap_size),
-        custom_reset_config: true,
-    };
+    ];
 
-    /* Do not skip BSS clearing on init */
-    let skip_bss_clearing = false;
-    /* Stack overflow detection is not enabled */
-    let stack_overflow_detection = false;
-    /* Target supports atomic extension (RISC-V A extension) */
-    let atomic_extension_supported = true;
-    /*
-     * Floating point support is required by the component.
-     * This ensures that the runtime saves/restores floating point registers as well.
-     */
-    let floating_point_support = true;
-    /*
-     * We are not messing with satp or other paging structures in this component, so we don't need
-     * a sfence to be executed on trapframe restore.
-     */
-    let sfence_on_trapframe_restore_feature = false;
+    let entrypoints = HashMap::from([
+        (EntrypointType::BootHart, "main".to_string()),
+        (EntrypointType::NonBootHart, "secondary_main".to_string()),
+        (EntrypointType::Trap, "trap_enter".to_string()),
+        (EntrypointType::CustomReset, "my_custom_reset".to_string()),
+        (
+            EntrypointType::StackOverflow,
+            "handle_stack_overflow".to_string(),
+        ),
+    ]);
 
+    let linker_config = LinkerConfig::new(
+        memory_regions,
+        sections,
+        StackLocation::InBss(StackAlignment::Natural),
+        target_config.clone(),
+    );
+    let rt_config = RtConfig::new(target_config)
+        .set_entrypoints(entrypoints)
+        .set_supports_atomic_extension()
+        .set_floating_point_support();
     let runtime_config = RuntimeConfig {
         rt_dirpath_name: "src/generated/rt",
         linker_dirpath_name: "src/generated/linker",
-        linker_config: LinkerConfig::new(
-            vec![
-                MemoryRegion::new(
-                    "region_1",
-                    0x8000_0000,
-                    128 * KiB,
-                    true,
-                    MemoryAttribs::rx(),
-                    Vec::new(),
-                ),
-                MemoryRegion::new(
-                    "region_2",
-                    0x8002_0000,
-                    64 * KiB,
-                    true,
-                    MemoryAttribs::rw(),
-                    vec![
-                        SubRegion::new("subregion_1", 56 * KiB, false),
-                        SubRegion::new("subregion_2", 8 * KiB, true),
-                    ],
-                ),
-            ],
-            vec![
-                Section::new(SectionType::Text, alignment, "region_1"),
-                Section::new(SectionType::Rodata, alignment, "region_1"),
-                Section::new(SectionType::Data, alignment, "subregion_1"),
-                Section::new(SectionType::Bss, alignment, "subregion_1"),
-                Section::new(SectionType::Heap, alignment, "subregion_1"),
-                Section::new(
-                    SectionType::Custom("custom_section".to_string(), 4096),
-                    alignment,
-                    "subregion_1",
-                ),
-            ],
-            StackLocation::InBss(StackAlignment::Natural),
-            target_config.clone(),
-        ),
-        rt_config: RtConfig::new(
-            HashMap::from([
-                (EntrypointType::BootHart, "main".to_string()),
-                (EntrypointType::NonBootHart, "secondary_main".to_string()),
-                (EntrypointType::Trap, "trap_enter".to_string()),
-                (EntrypointType::CustomReset, "my_custom_reset".to_string()),
-                (
-                    EntrypointType::StackOverflow,
-                    "handle_stack_overflow".to_string(),
-                ),
-            ]),
-            TrapFrame::get_default(),
-            TpBlock::get_default(),
-            ThreadContext::get_default(),
-            target_config,
-            skip_bss_clearing,
-            stack_overflow_detection,
-            atomic_extension_supported,
-            floating_point_support,
-            sfence_on_trapframe_restore_feature,
-        ),
+        linker_config,
+        rt_config,
     };
 
     std::fs::create_dir_all(runtime_config.rt_dirpath_name)
