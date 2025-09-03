@@ -95,7 +95,7 @@ impl TpBlock {
         self.trap_ctx_frame = val;
     }
 }
-extern "C" {
+unsafe extern "C" {
     fn __my_boot_id() -> usize;
 }
 #[allow(dead_code, non_snake_case)]
@@ -104,7 +104,7 @@ pub fn my_boot_id() -> usize {
         __my_boot_id()
     }
 }
-extern "C" {
+unsafe extern "C" {
     fn __my_hart_id() -> usize;
 }
 #[allow(dead_code, non_snake_case)]
@@ -113,7 +113,7 @@ pub fn my_hart_id() -> usize {
         __my_hart_id()
     }
 }
-extern "C" {
+unsafe extern "C" {
     fn __my_trap_frame_addr() -> usize;
 }
 #[allow(dead_code, non_snake_case)]
@@ -122,7 +122,7 @@ pub fn my_trap_frame_addr() -> usize {
         __my_trap_frame_addr()
     }
 }
-extern "C" {
+unsafe extern "C" {
     fn __my_tpblock_addr() -> usize;
 }
 #[allow(dead_code, non_snake_case)]
@@ -131,7 +131,7 @@ pub fn my_tpblock_addr() -> usize {
         __my_tpblock_addr()
     }
 }
-extern "C" {
+unsafe extern "C" {
     fn __get_restore_tf_label() -> usize;
 }
 #[allow(dead_code, non_snake_case)]
@@ -146,7 +146,7 @@ pub fn my_tpblock_mut() -> &'static mut TpBlock {
         &mut *(__my_tpblock_addr() as *mut TpBlock)
     }
 }
-extern "C" {
+unsafe extern "C" {
     fn __tpblock_base() -> usize;
 }
 #[allow(dead_code, non_snake_case)]
@@ -173,7 +173,7 @@ pub fn hart_to_boot_id(id: usize) -> Option<usize> {
     }
     None
 }
-extern "C" {
+unsafe extern "C" {
     fn __switch_to(ctx: usize);
 }
 #[allow(dead_code, non_snake_case)]
