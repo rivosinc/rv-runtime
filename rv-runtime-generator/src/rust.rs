@@ -98,7 +98,7 @@ impl RustSentence {
             Self::ImplStart(name) => fw.new_block(&format!("impl {name:#}")),
             Self::GetSelfMember(name) => fw.add_line(&format!("self.{name:#}")),
             Self::SetSelfMember(name, param) => fw.add_line(&format!("self.{name:#} = {param:#};")),
-            Self::ExternStart(ffi) => fw.new_block(&format!("extern {ffi:?}")),
+            Self::ExternStart(ffi) => fw.new_block(&format!("unsafe extern {ffi:?}")),
             Self::StaticDef(name, ty) => fw.add_line(&format!("static {name:#}: {ty:#};")),
             Self::AddrOf(var) => fw.add_line(&format!("(addr_of!({var:#})) as usize")),
             Self::Use(use_name) => fw.add_line(&format!("use {use_name:#};")),
