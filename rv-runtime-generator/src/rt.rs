@@ -2050,6 +2050,10 @@ fn determine_boot_id(asm: &AsmBuilder) {
 
         // Assumption is that hart supports AMOADD in case of multi-hart configuration
         // This is for assigning boot id.
+        assert!(
+            asm.rt_config.supports_atomic_extension(),
+            "Multi-hart target without atomic extension"
+        );
         asm.amoadd(boot_id, boot_id, inc);
         asm.release_reg(inc);
 
