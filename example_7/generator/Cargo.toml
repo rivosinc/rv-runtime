@@ -1,0 +1,10 @@
+[package]
+name = "example_7"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+log = "*"
+lazy_static = { version = "*", features = ["spin_no_std"] }
+rv-runtime-generator = { path = "../../rv-runtime-generator" }
+spin = "*"
