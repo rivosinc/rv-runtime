@@ -448,6 +448,11 @@ impl Section {
         }
     }
 
+    pub fn set_end_alignment_in_bytes(mut self, alignment_in_bytes: usize) -> Self {
+        self.end_alignment_in_bytes = alignment_in_bytes;
+        self
+    }
+
     pub fn add_subsection(&mut self, subsection: SubSection) {
         self.subsections.push(subsection);
     }
